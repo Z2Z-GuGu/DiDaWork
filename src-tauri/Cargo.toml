@@ -1,0 +1,45 @@
+[package]
+name = "didawork"
+version = "0.1.0"
+description = "DiDaWork — 轻量的工作计时与上下班闹钟"
+authors = ["DiDaWork"]
+edition = "2024"
+rust-version = "1.85"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "didawork_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+# 仅 Windows 使用（WinRT toast）；macOS / Linux 走下面的底层 crate 以拿到通知按钮
+tauri-plugin-notification = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 本地日期 / 时刻处理，只用 naive 类型，不引入时区数据库
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# 系统通知。tauri-plugin-notification 不暴露通知按钮，这里直接用底层 crate
+# （插件内部用的也是它，版本对齐后不会重复编译两份）
+mac-notification-sys = "0.6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# 通过 dlopen 在运行时加载 libX11 / libXss，不引入链接期系统依赖
+x11-dl = "2.21"
+# freedesktop 通知（支持 action 按钮）
+notify-rust = "4"
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

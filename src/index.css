@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   设计令牌
+   配色取自 otty 的 April / April Dark 主题：苔绿强调色 + 中性底。
+   明暗由 `<html data-theme>` 决定（跟随系统 / 浅色 / 深色三种设置都在前端解析成
+   这两个值之一），组件只消费变量，不需要写两套样式。
+   ========================================================================== */
+
+/* 让 `dark:` 变体跟随 data-theme，而不是窗口的 prefers-color-scheme */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* 浅色：april.ottytheme */
+:root {
+  color-scheme: light;
+
+  --c-canvas: #ffffff;
+  --c-sidebar: #f4f6f4;
+  --c-surface: #ffffff;
+  --c-subtle: #f5f7f5;
+  --c-ink: #2a332e;
+  --c-ink-soft: #6b7a73;
+  --c-ink-faint: #9aa8a1;
+  --c-hairline: #e0e6e2;
+  --c-hairline-strong: #ccd6d0;
+  --c-accent: #5da802;
+  --c-accent-hover: #4c8c02;
+  --c-accent-soft: rgba(93, 168, 2, 0.12);
+  --c-on-accent: #ffffff;
+  --c-danger: #b23b3b;
+
+  /* 热力图四档：从"几乎没工作"到"满负荷" */
+  --c-heat-0: #e7ece5;
+  --c-heat-1: #d8ebb2;
+  --c-heat-2: #b5da6f;
+  --c-heat-3: #83c02f;
+  --c-heat-4: #5da802;
+
+  --shadow-card: 0 1px 2px rgba(24, 42, 32, 0.04), 0 8px 24px -12px rgba(24, 42, 32, 0.14);
+  --shadow-float: 0 10px 40px -12px rgba(16, 27, 20, 0.28);
+}
+
+/* 深色：april-dark.ottytheme */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --c-canvas: #141b18;
+  --c-sidebar: #1a2420;
+  --c-surface: #1a2420;
+  --c-subtle: #22302a;
+  --c-ink: #ffffff;
+  --c-ink-soft: #8a9992;
+  --c-ink-faint: #5c6b64;
+  --c-hairline: #25332d;
+  --c-hairline-strong: #31423a;
+  --c-accent: #c5e86c;
+  --c-accent-hover: #d5f18a;
+  --c-accent-soft: rgba(197, 232, 108, 0.14);
+  --c-on-accent: #141b18;
+  --c-danger: #e06c75;
+
+  --c-heat-0: #22302a;
+  --c-heat-1: #3a4a22;
+  --c-heat-2: #5d7a2b;
+  --c-heat-3: #94bf45;
+  --c-heat-4: #c5e86c;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 16px 48px -12px rgba(0, 0, 0, 0.7);
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  --color-canvas: var(--c-canvas);
+  --color-sidebar: var(--c-sidebar);
+  --color-surface: var(--c-surface);
+  --color-subtle: var(--c-subtle);
+  --color-ink: var(--c-ink);
+  --color-ink-soft: var(--c-ink-soft);
+  --color-ink-faint: var(--c-ink-faint);
+  --color-hairline: var(--c-hairline);
+  --color-hairline-strong: var(--c-hairline-strong);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-on-accent: var(--c-on-accent);
+  --color-danger: var(--c-danger);
+  --color-heat-0: var(--c-heat-0);
+  --color-heat-1: var(--c-heat-1);
+  --color-heat-2: var(--c-heat-2);
+  --color-heat-3: var(--c-heat-3);
+  --color-heat-4: var(--c-heat-4);
+
+  --radius-card: 16px;
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
+
+  --animate-rise: rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-ring-pulse: ring-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.15;
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--c-canvas);
+    color: var(--c-ink);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+    /* 桌面应用：禁止整页选中与拖拽回弹 */
+    user-select: none;
+    cursor: default;
+  }
+
+  ::selection {
+    background: var(--c-accent-soft);
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input,
+  select {
+    font: inherit;
+  }
+
+  /* 细滚动条，贴合 macOS 观感 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--c-hairline-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--c-ink-faint);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 时间输入框去掉系统自带的杂色 */
+  input[type="time"] {
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    opacity: 0.45;
+    cursor: pointer;
+  }
+}
+
+@utility drag-region {
+  -webkit-app-region: drag;
+}
+
+@utility no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* 数字统一等宽，避免计时变化导致跳动 */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
