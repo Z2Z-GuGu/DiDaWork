@@ -11,7 +11,15 @@ import {
 import { listen } from "@tauri-apps/api/event";
 
 import { api } from "@/lib/api";
-import type { Alarm, AppInfo, LiveStatus, Ringtone, Settings } from "@/lib/types";
+import type {
+  AddedRingtone,
+  Alarm,
+  AppInfo,
+  LiveStatus,
+  Ringtone,
+  RingtoneInput,
+  Settings,
+} from "@/lib/types";
 
 /**
  * 应用数据总线。
@@ -35,6 +43,10 @@ interface AppDataValue {
   saveAlarm: (alarm: Alarm) => Promise<Alarm[]>;
   deleteAlarm: (id: string) => Promise<void>;
   toggleAlarm: (id: string, enabled: boolean) => Promise<void>;
+  /** 重新扫描铃声目录（用户可能在访达里直接增删了文件夹） */
+  refreshRingtones: () => Promise<Ringtone[]>;
+  /** 导入一首自定义铃声，成功后列表自动刷新 */
+  addRingtone: (input: RingtoneInput) => Promise<AddedRingtone>;
 }
 
 const FALLBACK_SETTINGS: Settings = {
@@ -159,6 +171,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setAlarms(list);
   }, []);
 
+  const refreshRingtones = useCallback(async () => {
+    const list = await api.listRingtones();
+    setRingtones(list);
+    return list;
+  }, []);
+
+  const addRingtone = useCallback(async (input: RingtoneInput) => {
+    const added = await api.addRingtone(input);
+    setRingtones(added.ringtones);
+    return added;
+  }, []);
+
   const value = useMemo<AppDataValue>(
     () => ({
       ready,
@@ -172,6 +196,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveAlarm,
       deleteAlarm,
       toggleAlarm,
+      refreshRingtones,
+      addRingtone,
     }),
     [
       ready,
@@ -185,6 +211,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveAlarm,
       deleteAlarm,
       toggleAlarm,
+      refreshRingtones,
+      addRingtone,
     ],
   );
 

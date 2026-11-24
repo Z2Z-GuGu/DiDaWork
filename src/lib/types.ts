@@ -93,10 +93,29 @@ export interface LiveStatus {
   lastInputMs: number | null;
 }
 
+/**
+ * 一首铃声 = 数据目录里 `ringtones/` 下的一个文件夹。
+ * 文件夹里有 m4a/mp3 就算一首铃声，有 txt 就有版权声明。
+ */
 export interface Ringtone {
+  /** 文件夹名，也是闹钟里存的铃声 id */
   id: string;
-  nameZh: string;
-  nameEn: string;
+  /** 列表里显示的名字，就是文件夹名 */
+  name: string;
+  hasLicense: boolean;
+}
+
+/** 导入自定义铃声的入参：音乐名必填，版权声明可选。 */
+export interface RingtoneInput {
+  name: string;
+  audioPath: string;
+  licensePath?: string | null;
+}
+
+/** `add_ringtone` 的返回值：刷新后的列表 + 刚创建的那一首。 */
+export interface AddedRingtone {
+  ringtones: Ringtone[];
+  created: Ringtone;
 }
 
 export interface AppInfo {

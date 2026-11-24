@@ -5,12 +5,14 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AddedRingtone,
   Alarm,
   AppInfo,
   DaySummary,
   Heatmap,
   LiveStatus,
   Ringtone,
+  RingtoneInput,
   Settings,
   TimelineDay,
   Trend,
@@ -41,6 +43,13 @@ export const api = {
   getAppInfo: () => invoke<AppInfo>("get_app_info"),
   listRingtones: () => invoke<Ringtone[]>("list_ringtones"),
   previewRingtone: (id: string) => invoke<void>("preview_ringtone", { id }),
+  addRingtone: (input: RingtoneInput) =>
+    invoke<AddedRingtone>("add_ringtone", {
+      name: input.name,
+      audioPath: input.audioPath,
+      licensePath: input.licensePath ?? null,
+    }),
+  openRingtoneLicense: (id: string) => invoke<void>("open_ringtone_license", { id }),
   dismissRing: () => invoke<void>("dismiss_ring"),
   openMainWindow: () => invoke<void>("open_main_window"),
   openUrl: (url: string) => invoke<void>("open_url", { url }),

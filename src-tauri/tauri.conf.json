@@ -34,12 +34,16 @@
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "轻量的工作计时与上下班闹钟",
+    "resources": ["resources/ringtones"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "-"
+    }
   }
 }

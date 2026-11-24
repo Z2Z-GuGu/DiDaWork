@@ -24,9 +24,15 @@ pub fn save_alarm(
     if alarm.id.trim().is_empty() {
         alarm.id = id::next("alarm");
     }
-    // 归一化铃声，避免配置文件里出现不存在的 id。
-    alarm.ringtone_in = ringtone::normalize(&alarm.ringtone_in).to_string();
-    alarm.ringtone_out = ringtone::normalize(&alarm.ringtone_out).to_string();
+    // 归一化铃声，避免配置文件里出现已经不存在的文件夹名。
+    // 铃声库为空（用户把目录清空了）时保持原样，不去编造一个 id。
+    let available = state.ringtones().list();
+    if let Some(next) = ringtone::normalize(&alarm.ringtone_in, &available) {
+        alarm.ringtone_in = next.to_string();
+    }
+    if let Some(next) = ringtone::normalize(&alarm.ringtone_out, &available) {
+        alarm.ringtone_out = next.to_string();
+    }
 
     let mut list = state.alarms();
     validate(&alarm, &list)?;

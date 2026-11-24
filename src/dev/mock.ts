@@ -106,8 +106,8 @@ let alarms: Alarm[] = [
     label: "上午办公",
     clockIn: "09:00",
     clockOut: "12:00",
-    ringtoneIn: "glass",
-    ringtoneOut: "ping",
+    ringtoneIn: "emotional-piano",
+    ringtoneOut: "love-story",
     weekdays: [true, true, true, true, true, false, false],
     enabled: true,
   },
@@ -116,25 +116,18 @@ let alarms: Alarm[] = [
     label: "下午办公",
     clockIn: "13:30",
     clockOut: "18:30",
-    ringtoneIn: "pop",
-    ringtoneOut: "hero",
+    ringtoneIn: "medical",
+    ringtoneOut: "emotional-piano",
     weekdays: [true, true, true, true, true, false, false],
     enabled: true,
   },
 ];
 
-const RINGTONES: Ringtone[] = [
-  "glass",
-  "ping",
-  "pop",
-  "tink",
-  "hero",
-  "submarine",
-  "morse",
-  "purr",
-  "funk",
-  "bottle",
-].map((id) => ({ id, nameZh: id, nameEn: id }));
+let ringtones: Ringtone[] = [
+  { id: "emotional-piano", name: "emotional-piano", hasLicense: true },
+  { id: "love-story", name: "love-story", hasLicense: true },
+  { id: "medical", name: "medical", hasLicense: true },
+];
 
 const INFO: AppInfo = {
   version: "0.1.0",
@@ -234,8 +227,17 @@ export function install(): void {
     getTimeline: async (days: number, end?: string) => timelineOf(days, end),
     getHeatmap: async (weeks: number) => heatmapOf(weeks),
     getAppInfo: async () => INFO,
-    listRingtones: async () => RINGTONES,
+    listRingtones: async () => ringtones,
     previewRingtone: async () => undefined,
+    addRingtone: async (input: { name: string; audioPath: string; licensePath?: string | null }) => {
+      const id = input.name.trim().replace(/[/\\:*?"<>|]/g, "-");
+      const created = { id, name: id, hasLicense: Boolean(input.licensePath) };
+      ringtones = [...ringtones, created].sort((a, b) =>
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+      );
+      return { ringtones, created };
+    },
+    openRingtoneLicense: async () => undefined,
     dismissRing: async () => undefined,
     openMainWindow: async () => undefined,
     openUrl: async () => undefined,

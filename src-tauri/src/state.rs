@@ -13,6 +13,7 @@ use crate::domain::activity::{coalesce, ActiveSegment, ActivityTracker};
 use crate::domain::alarm::Alarm;
 use crate::domain::settings::Settings;
 use crate::domain::time;
+use crate::infra::ringtones::{Library, DIR_NAME as RINGTONES_DIR};
 use crate::infra::store::Store;
 use crate::service::ringer::RingSession;
 
@@ -33,6 +34,8 @@ pub struct LiveStatus {
 
 pub struct AppState {
     pub store: Store,
+    /// 铃声库：`<数据目录>/ringtones`，一个文件夹一首铃声。
+    ringtones: Library,
     settings: RwLock<Settings>,
     alarms: RwLock<Vec<Alarm>>,
     tracker: Mutex<ActivityTracker>,
@@ -43,22 +46,40 @@ pub struct AppState {
 impl AppState {
     pub fn new(store: Store) -> Self {
         let settings = store.load_settings();
-        let alarms = store.load_alarms();
+        let mut alarms = store.load_alarms();
+
+        let ringtones = Library::new(store.root().join(RINGTONES_DIR));
+        if let Err(err) = ringtones.ensure() {
+            eprintln!("[state] 创建铃声目录失败: {err}");
+        }
+        let migrated = migrate_ringtones(&mut alarms, ringtones.list());
+
         // 首次启动（或文件损坏被重置）时把默认值落盘，用户能直接看到配置文件。
         if let Err(err) = store.save_settings(&settings) {
             eprintln!("[state] 写入设置失败: {err}");
         }
+        if migrated {
+            eprintln!("[state] 已把失效的铃声换成当前铃声库里的第一首");
+        }
         if let Err(err) = store.save_alarms(&alarms) {
             eprintln!("[state] 写入闹钟失败: {err}");
         }
+
         Self {
             store,
+            ringtones,
             settings: RwLock::new(settings),
             alarms: RwLock::new(alarms),
             tracker: Mutex::new(ActivityTracker::new()),
             live: RwLock::new(LiveStatus::default()),
             ring: Mutex::new(None),
         }
+    }
+
+    // ---------- 铃声 ----------
+
+    pub fn ringtones(&self) -> &Library {
+        &self.ringtones
     }
 
     // ---------- 设置 ----------
@@ -160,3 +181,76 @@ impl AppState {
 }
 
 pub type SharedState = Arc<AppState>;
+
+/// 升级迁移：老版本存的是系统音效名（`glass` / `ping` …），现在铃声库里已经没有了。
+/// 把这类失效的 id 指到当前库里的第一首，界面上就不会出现"铃声已失效"。
+///
+/// 铃声库为空时什么都不做——用户把文件夹清空是主动行为，不去改他的配置。
+fn migrate_ringtones(alarms: &mut [Alarm], available: Vec<crate::domain::ringtone::Ringtone>) -> bool {
+    if available.is_empty() {
+        return false;
+    }
+    let mut changed = false;
+    for alarm in alarms.iter_mut() {
+        for slot in [&mut alarm.ringtone_in, &mut alarm.ringtone_out] {
+            if let Some(next) = crate::domain::ringtone::normalize(slot.as_str(), &available) {
+                if next != slot.as_str() {
+                    *slot = next.to_string();
+                    changed = true;
+                }
+            }
+        }
+    }
+    changed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::alarm::ClockTime;
+    use crate::domain::ringtone::Ringtone;
+
+    fn alarm_with(ring_in: &str, ring_out: &str) -> Alarm {
+        Alarm {
+            id: "a".into(),
+            label: "工作".into(),
+            clock_in: ClockTime::parse("09:00").unwrap(),
+            clock_out: ClockTime::parse("18:00").unwrap(),
+            ringtone_in: ring_in.into(),
+            ringtone_out: ring_out.into(),
+            weekdays: vec![true; 7],
+            enabled: true,
+        }
+    }
+
+    fn tone(id: &str) -> Ringtone {
+        Ringtone {
+            id: id.into(),
+            name: id.into(),
+            has_license: false,
+        }
+    }
+
+    #[test]
+    fn 失效的铃声会换成第一首() {
+        let mut alarms = vec![alarm_with("glass", "voice")];
+        let changed = migrate_ringtones(&mut alarms, vec![tone("emotional-piano"), tone("medical")]);
+        assert!(changed);
+        assert_eq!(alarms[0].ringtone_in, "emotional-piano");
+        assert_eq!(alarms[0].ringtone_out, "emotional-piano");
+    }
+
+    #[test]
+    fn 铃声库为空时不动配置() {
+        let mut alarms = vec![alarm_with("glass", "ping")];
+        assert!(!migrate_ringtones(&mut alarms, Vec::new()));
+        assert_eq!(alarms[0].ringtone_in, "glass");
+    }
+
+    #[test]
+    fn 本来就有效的铃声保持不变() {
+        let mut alarms = vec![alarm_with("medical", "medical")];
+        assert!(!migrate_ringtones(&mut alarms, vec![tone("medical")]));
+        assert_eq!(alarms[0].ringtone_out, "medical");
+    }
+}

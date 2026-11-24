@@ -68,11 +68,18 @@ pub fn ring(app: &AppHandle, state: &SharedState, info: RingInfo) {
     dismiss(app, state);
 
     let settings = state.settings();
-    let ringtone = crate::domain::ringtone::normalize(&info.ringtone);
+    // 铃声是磁盘上的音乐文件；配置里那首被删掉了就用列表第一首，总比没声音强。
+    let audio = state
+        .ringtones()
+        .audio_path(&info.ringtone)
+        .or_else(|| state.ringtones().first_audio());
+    if audio.is_none() {
+        eprintln!("[ringer] 没有可用的铃声文件，只弹通知");
+    }
     let session = RingSession {
         started_ms: info.started_ms,
         watcher_stop: Arc::new(AtomicBool::new(false)),
-        sound: Some(SoundHandle::play(ringtone, settings.ring_max_seconds as u64)),
+        sound: audio.map(|path| SoundHandle::play_file(&path, settings.ring_max_seconds as u64)),
     };
     let watcher_stop = Arc::clone(&session.watcher_stop);
     *state.ring_slot() = Some(session);
@@ -94,6 +101,8 @@ pub fn dismiss(app: &AppHandle, state: &SharedState) {
         return;
     };
     session.silence();
+    // 铃声没了，通知也别继续挂在通知中心。
+    notify::clear();
     eprintln!("[ringer] 停铃");
     let _ = app.emit(events::RING_END, ());
     crate::service::tray::set_ringing(app, false);

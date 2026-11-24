@@ -22,10 +22,12 @@ mod platform;
 mod service;
 mod state;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use tauri::{Manager, RunEvent, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
+use infra::ringtones::{Library, DIR_NAME as RINGTONES_DIR};
 use infra::store::Store;
 use state::{AppState, SharedState};
 
@@ -33,6 +35,7 @@ use state::{AppState, SharedState};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // macOS：只驻留菜单栏，不占 Dock。
             // 切换成 Accessory 后窗口偶尔会失去前台状态，这里显式再显示一次。
@@ -55,6 +58,21 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             let store = Store::new(data_dir);
             store.ensure_layout()?;
+
+            // 先把内置铃声铺到用户目录，再建状态：AppState 初始化时要按实际铃声库
+            // 迁移旧配置（老版本的 glass / ping 这些系统音效已经不存在了）。
+            let library = Library::new(store.root().join(RINGTONES_DIR));
+            match bundled_ringtones(app.handle()) {
+                Some(source) => match library.seed(&source) {
+                    Ok(0) => {}
+                    Ok(count) => eprintln!(
+                        "[ringtones] 已复制 {count} 个内置铃声到 {}",
+                        library.root().display()
+                    ),
+                    Err(err) => eprintln!("[ringtones] 复制内置铃声失败: {err}"),
+                },
+                None => eprintln!("[ringtones] 找不到内置铃声资源，只使用用户自己的铃声"),
+            }
 
             let state: SharedState = Arc::new(AppState::new(store));
             app.manage(Arc::clone(&state));
@@ -91,6 +109,8 @@ pub fn run() {
             commands::app::get_app_info,
             commands::app::list_ringtones,
             commands::app::preview_ringtone,
+            commands::app::add_ringtone,
+            commands::app::open_ringtone_license,
             commands::app::dismiss_ring,
             commands::app::open_url,
             commands::app::open_data_dir,
@@ -105,6 +125,22 @@ pub fn run() {
                 if let Some(state) = app.try_state::<SharedState>() {
                     state.flush();
                 }
+                platform::audio::stop_preview();
             }
         });
+}
+
+/// 内置铃声在安装包里的位置。
+///
+/// 打包后一般落在 `<App>.app/Contents/Resources/ringtones`；开发模式（`tauri dev`）
+/// 没有资源目录，直接读源码树里的 `src-tauri/resources/ringtones`。
+/// 打包器对 `resources` 前缀的处理在不同版本上不完全一致，这里把常见层级都试一遍。
+fn bundled_ringtones(app: &AppHandle) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(dir) = app.path().resource_dir() {
+        candidates.push(dir.join("ringtones"));
+        candidates.push(dir.join("resources").join("ringtones"));
+    }
+    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/ringtones"));
+    candidates.into_iter().find(|path| path.is_dir())
 }

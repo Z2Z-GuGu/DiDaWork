@@ -5,6 +5,7 @@
 //! 以及"关闭闹钟"，只在响铃期间可用——Windows 的通知没有按钮，这里是主要的停铃入口）。
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::image::Image;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Wry};
 
@@ -54,13 +55,39 @@ pub fn setup(app: &AppHandle, language: Language) -> tauri::Result<()> {
             }
         });
 
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
-    }
+    builder = with_icon(builder, app);
 
     builder.build(app)?;
     app.manage(TrayItems { today, dismiss });
     Ok(())
+}
+
+/// 托盘 / 菜单栏图标单独用深色版：应用图标（Dock、Finder、通知横幅）保持不变。
+///
+/// 编译期嵌入，省掉运行时找资源目录；Tauri 会把它等比压到菜单栏的 18pt 高。
+///
+/// - macOS：`tray-mac.png` 是去掉白底、只剩黑色图形 + alpha 的版本，配 `icon_as_template`
+///   交给系统着色（浅色菜单栏画黑、深色菜单栏画白），跟其他菜单栏图标一致。
+/// - Windows / Linux：没有 template 概念，深色任务栏上纯黑图形会糊成一片，
+///   所以仍用带白底圆角的 `tray.png`。
+#[cfg(target_os = "macos")]
+const TRAY_ICON: &[u8] = include_bytes!("../../icons/tray-mac.png");
+#[cfg(not(target_os = "macos"))]
+const TRAY_ICON: &[u8] = include_bytes!("../../icons/tray.png");
+
+fn with_icon(builder: TrayIconBuilder<Wry>, app: &AppHandle) -> TrayIconBuilder<Wry> {
+    let builder = match Image::from_bytes(TRAY_ICON) {
+        Ok(icon) => builder.icon(icon),
+        // 解码失败也留个图标，退回应用图标总比空着好。
+        Err(_) => match app.default_window_icon() {
+            Some(icon) => builder.icon(icon.clone()),
+            None => builder,
+        },
+    };
+    // 只对 macOS 生效：让系统按菜单栏明暗自动反色，不去自己做深浅两套图。
+    #[cfg(target_os = "macos")]
+    let builder = builder.icon_as_template(true);
+    builder
 }
 
 /// 每分钟调用一次，更新托盘菜单里的今日工作时长。

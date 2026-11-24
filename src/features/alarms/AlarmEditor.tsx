@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Play, Trash2 } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
 
 import { useAppData } from "@/app/AppDataProvider";
 import { Button } from "@/components/ui/button";
@@ -8,20 +8,13 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Input, TimeInput } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/i18n";
-import { api } from "@/lib/api";
 import { weekdayShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Alarm } from "@/lib/types";
 import { describeAlarmError } from "./alarmError";
+import { RingtonePicker } from "./RingtonePicker";
 
 const PRESET_ALL = [true, true, true, true, true, true, true];
 const PRESET_WORKDAYS = [true, true, true, true, true, false, false];
@@ -52,14 +45,16 @@ export function AlarmEditor({
 }) {
   const { t, lang } = useI18n();
   const { ringtones, saveAlarm, deleteAlarm } = useAppData();
-  const [draft, setDraft] = useState<Alarm>(() => alarm ?? emptyAlarm(ringtones[0]?.id ?? "glass"));
+  const [draft, setDraft] = useState<Alarm>(
+    () => alarm ?? emptyAlarm(ringtones[0]?.id ?? ""),
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // 每次打开时同步到最新数据（编辑态 / 新建态）
   useEffect(() => {
     if (!open) return;
-    setDraft(alarm ?? emptyAlarm(ringtones[0]?.id ?? "glass"));
+    setDraft(alarm ?? emptyAlarm(ringtones[0]?.id ?? ""));
     setError(null);
   }, [open, alarm, ringtones]);
 
@@ -93,11 +88,6 @@ export function AlarmEditor({
       setError(describeAlarmError(err, t));
     }
   }
-
-  const ringtoneItems = ringtones.map((ringtone) => ({
-    value: ringtone.id,
-    label: lang === "zh" ? ringtone.nameZh : ringtone.nameEn,
-  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,18 +175,16 @@ export function AlarmEditor({
             </div>
           </div>
 
-          {/* 铃声 */}
+          {/* 铃声：列表来自数据目录下的 ringtones/，每首可以试听、看版权 */}
           <div className="space-y-2">
-            <RingtoneRow
+            <RingtonePicker
               label={t("alarms.ringtoneIn")}
               value={draft.ringtoneIn}
-              items={ringtoneItems}
               onChange={(value) => patch({ ringtoneIn: value })}
             />
-            <RingtoneRow
+            <RingtonePicker
               label={t("alarms.ringtoneOut")}
               value={draft.ringtoneOut}
-              items={ringtoneItems}
               onChange={(value) => patch({ ringtoneOut: value })}
             />
           </div>
@@ -245,46 +233,5 @@ function PresetButton({ onClick, children }: { onClick: () => void; children: st
     >
       {children}
     </button>
-  );
-}
-
-function RingtoneRow({
-  label,
-  value,
-  items,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  items: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-[11px] font-medium text-ink-soft">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="w-[132px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {items.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="ghost"
-          size="icon"
-          title={t("common.preview")}
-          onClick={() => void api.previewRingtone(value)}
-        >
-          <Play className="size-3.5" />
-        </Button>
-      </div>
-    </div>
   );
 }

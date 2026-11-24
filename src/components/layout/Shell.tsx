@@ -28,7 +28,7 @@ export function Shell({ tab, onTabChange, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-full w-full overflow-hidden bg-canvas">
+    <div className="relative flex h-full w-full overflow-hidden bg-canvas">
       <Sidebar tab={tab} onTabChange={onTabChange} />
       <main className="flex min-w-0 flex-1 flex-col">
         <div
@@ -42,6 +42,17 @@ export function Shell({ tab, onTabChange, children }: {
           {children}
         </div>
       </main>
+
+      {/* 没有系统标题栏，就用一行静态标题表明这是哪个应用。
+          压在最上层但 pointer-events-none，拖拽与右侧按钮都不受影响。 */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center",
+          TITLE_BAR_HEIGHT,
+        )}
+      >
+        <span className="text-[13px] font-semibold tracking-[0.01em] text-ink">DiDaWork</span>
+      </div>
     </div>
   );
 }
