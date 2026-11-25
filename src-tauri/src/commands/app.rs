@@ -20,7 +20,7 @@ pub struct AppInfo {
     pub repository: String,
 }
 
-const REPOSITORY: &str = "https://github.com/bugu/DiDaWork";
+const REPOSITORY: &str = "https://github.com/Z2Z-GuGu/DiDaWork";
 
 #[tauri::command]
 pub fn get_app_info(app: AppHandle, state: State<'_, SharedState>) -> AppInfo {

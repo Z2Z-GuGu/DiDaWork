@@ -133,7 +133,7 @@ const INFO: AppInfo = {
   version: "0.1.0",
   platform: "macOS",
   dataDir: "~/Library/Application Support/com.bugu.didawork",
-  repository: "https://github.com/bugu/DiDaWork",
+  repository: "https://github.com/Z2Z-GuGu/DiDaWork",
 };
 
 function lastSegmentStart(): number | null {

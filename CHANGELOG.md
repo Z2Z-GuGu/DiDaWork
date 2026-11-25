@@ -41,8 +41,11 @@ and rings paired clock-in / clock-out alarms with system notifications and music
 - Backend validation rejects overlapping time ranges.
 - Skip rules: stay quiet for clock-in when you are already working, and for clock-out when
   you have already left.
-- Overtime reminder keeps nudging you at a configurable interval while you are still working
-  after clock-out.
+- Overtime reminder nudges you at a configurable interval while you are still working after
+  clock-out — but only until the next group's clock-in, so the morning alarm goes quiet once
+  the afternoon shift starts.
+- Overtime ends for the day as soon as you go idle after having worked past clock-out;
+  picking work back up later (even before the next shift) does not revive it.
 
 ### Ringing
 
