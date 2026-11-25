@@ -227,7 +227,9 @@ export function install(): void {
     getTimeline: async (days: number, end?: string) => timelineOf(days, end),
     getHeatmap: async (weeks: number) => heatmapOf(weeks),
     getAppInfo: async () => INFO,
-    listRingtones: async () => ringtones,
+    // 和后端一致：每次扫盘都返回新数组，不要图省事直接返回同一个引用，
+    // 否则会掩盖"依赖 ringtones 引用变化"这类 bug。
+    listRingtones: async () => [...ringtones],
     previewRingtone: async () => undefined,
     addRingtone: async (input: { name: string; audioPath: string; licensePath?: string | null }) => {
       const id = input.name.trim().replace(/[/\\:*?"<>|]/g, "-");

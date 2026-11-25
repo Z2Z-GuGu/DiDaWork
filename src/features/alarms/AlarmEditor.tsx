@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Trash2 } from "lucide-react";
 
 import { useAppData } from "@/app/AppDataProvider";
@@ -51,9 +51,19 @@ export function AlarmEditor({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // 每次打开时同步到最新数据（编辑态 / 新建态）
+  // 只在"刚打开弹窗"或"换了一个闹钟"时，才用外部数据重置草稿。
+  //
+  // 这里不能直接拿 ringtones 当触发条件：展开铃声列表时会重新扫盘，
+  // 后端返回的是新数组，引用一变就会把用户已经填好的标签、时间段、重复冲掉。
+  const sessionRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      sessionRef.current = null;
+      return;
+    }
+    const session = alarm?.id ?? "";
+    if (sessionRef.current === session) return;
+    sessionRef.current = session;
     setDraft(alarm ?? emptyAlarm(ringtones[0]?.id ?? ""));
     setError(null);
   }, [open, alarm, ringtones]);
